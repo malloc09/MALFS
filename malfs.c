@@ -25,6 +25,7 @@ static int malfs_truncate(const char* path,off_t size){
 }
 static int malfs_open(const char* path,struct fuse_file_info* fi){
 	open();
+	printf("hello world");
 	return 0;
 }
 static int malfs_read(const char* path,char* buf,size_t size,off_t offset,struct fuse_file_info* fi){
