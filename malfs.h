@@ -12,6 +12,7 @@ typedef struct malfs_file{
 	struct stat stat;
 	struct malfs_file* parent;
 	struct malfs_file* next;
+	struct malfs_file* children_head;
 	unsigned int num_of_children;
 
 	char* data;
