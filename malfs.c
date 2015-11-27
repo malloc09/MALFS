@@ -100,7 +100,7 @@ static void insert_children(malfs_filep parent,malfs_filep child){
 
 }
 //find name from path 1st argument is total path 2nd argument is pointer for saving file/dir name
-static char* find_parent(char* path,char** fname){
+static char* find_parent(const char* path,char** fname){
 		char* ppath,*name;
 		int len,itr;
 		ppath=(char*)malloc((strlen(path)+1));
@@ -134,12 +134,12 @@ static int malfs_mkdir(const char* path,mode_t mode){
 		if(find_malfs(path))
 			return -EEXIST;
 
-		find_parent(path,&name);		
+		ppath=find_parent(path,&name);		
 		//make a dir
 		parent=find_malfs(ppath);
 		newdir=create_malfs(name,mode,MAL_DIR);
 		insert_children(parent,newdir);
-		free(name);
+			free(name);
 		free(ppath);
 		return 0;
 	}
