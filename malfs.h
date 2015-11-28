@@ -2,7 +2,6 @@
 #define __MAL__FS__
 
 #include <fuse.h>
-
 #define MAL_FILE 1
 #define MAL_DIR 0
 
@@ -32,5 +31,8 @@ static int malfs_create(const char* path,mode_t mode,struct fuse_file_info* fi);
 static int malfs_utimens(const char* path, const struct timespec tv[2]);
 static int malfs_unlink(const char* path);
 static int malfs_release(const char* path,struct fuse_file_info* fi);
-static void* init(struct fuse_conn_info* conn);
+static int malfs_chmod(const char* path,mode_t mode);
+static int malfs_chown(const char* path,uid_t uid,gid_t gid);
+static void* malfs_init(struct fuse_conn_info* conn);
+
 #endif
