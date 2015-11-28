@@ -1,14 +1,12 @@
 #define FUSE_USE_VERSION 26
 
-#include "malfs.h"
 #include <stdio.h>
-#include <fuse.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
 #include <string.h>
-
+#include "malfs.h"
 struct malfs_file* root;
 
 
@@ -42,6 +40,7 @@ static malfs_filep find_malfs(const char* path){
 			else
 			name=strtok(NULL,"/");
 		}
+		printf("ii%s\n",tpath);
 		free(tpath);
 		return temp;
 	}
@@ -57,7 +56,6 @@ static malfs_filep create_malfs(char* name,mode_t mode,int type){
 		strcpy(res->name,name);
 		res->type=MAL_DIR;
 		res->stat.st_mode=S_IFDIR | mode;
-
 	}
 	else{
 			res->name=(char*)malloc(strlen(name)+1);
@@ -97,7 +95,6 @@ static void insert_children(malfs_filep parent,malfs_filep child){
 	parent->children_head=child;
 	child->parent=parent;
 	parent->num_of_children++;
-	parent->stat.st_nlink++;
 
 }
 //find name from path 1st argument is total path 2nd argument is pointer for saving file/dir name
@@ -207,10 +204,11 @@ static int malfs_open(const char* path,struct fuse_file_info* fi){
 	return 0;
 }
 static int malfs_read(const char* path,char* buf,size_t size,off_t offset,struct fuse_file_info* fi){
-	printf("read\n");
-
+	printf("%d read\n",size);
 	malfs_filep temp = find_malfs(path);
 	if(temp){
+		if(temp->data==NULL)
+			return 0;
 		if(temp->type != MAL_FILE)
 			return -EINVAL;
 		strncpy(buf, temp->data + offset, size);
@@ -287,7 +285,13 @@ static int malfs_create(const char* path,mode_t mode,struct fuse_file_info* fi){
 }
 static int malfs_utimens(const char* path, const struct timespec tv[2]){
 	printf("utimens\n");
-	return 0;
+	malfs_filep target=find_malfs(path);
+	if(target){
+		target->stat.st_atime=tv[0].tv_sec;
+		target->stat.st_mtime=tv[1].tv_sec;
+		return 0;
+	}
+	else return -ENOENT;
 }
 static int malfs_unlink(const char* path){
 	printf("unlink\n");
@@ -328,11 +332,31 @@ static int malfs_unlink(const char* path){
 static int malfs_release(const char* path,struct fuse_file_info* fi){
 	printf("release\n");return 0;
 }
+static int malfs_chmod(const char* path,mode_t mode){
+	malfs_filep target=find_malfs(path);
+	if(target){
+		target->stat.st_mode=mode;
+		return 0;
+	}
+	else
+		return -ENOENT;
 
+}
+static int malfs_chown(const char* path,uid_t uid,gid_t gid){
+	malfs_filep target=find_malfs(path);
+	if(target){
+		target->stat.st_uid=uid;
+		target->stat.st_gid=gid;
+		return 0;
+	}
+	else
+		return -ENOENT;
+}
 void* malfs_init(struct fuse_conn_info* fi){
 	malfs_mkdir("/test1",0666);
 
 }
+
 static struct fuse_operations malfs_oper = {
 	.getattr=malfs_getattr,
 	.mkdir=malfs_mkdir,
@@ -347,9 +371,12 @@ static struct fuse_operations malfs_oper = {
 	.utimens=malfs_utimens,
 	.unlink=malfs_unlink,
 	.release=malfs_release,
+	.chmod=malfs_chmod,
+	.chown=malfs_chown,
 	.init=malfs_init,
 
 };
+
 int main(int argc, char *argv[]){
 
 	malfs_mkdir("/",0777);//make a root dir
