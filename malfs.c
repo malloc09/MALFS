@@ -18,7 +18,8 @@ static malfs_filep find_malfs(const char* path){
 	malfs_filep child,res;
 	char* tpath;
 	char* name;
-	int i,isfound;
+	unsigned int i;
+	int isfound;
 	tpath=(char*)malloc(sizeof(char)*(strlen(path)+1));
 	strcpy(tpath,path);
 	if(strcmp(tpath,"/")==0)
@@ -102,14 +103,15 @@ static void insert_children(malfs_filep parent,malfs_filep child){
 //find name from path 1st argument is total path 2nd argument is pointer for saving file/dir name
 static char* find_parent(const char* path,char** fname){
 		char* ppath,*name;
-		int len,itr;
+		int len;
+		unsigned int itr=0;
 		ppath=(char*)malloc((strlen(path)+1));
 		strcpy(ppath,path);
 		len=strlen(ppath);
 		while(ppath[len]!='/'){
 			len--;
 		}
-		name=(char*)malloc(strlen(ppath)-len);
+		name=(char*)malloc(strlen(ppath)-len+1);
 		while(itr<strlen(ppath)-len){
 			name[itr]=ppath[len+itr+1];
 			itr++;
@@ -148,7 +150,7 @@ static int malfs_rmdir(const char* path){
 	printf("rmdir\n");
 	malfs_filep target;
 	malfs_filep before,curr;
-	int i;
+	unsigned int i;
 	//if root dir 
 	if((strcmp(path,"/"))==0)
 		return -EPERM;
@@ -243,7 +245,7 @@ static int malfs_opendir(const char* path,struct fuse_file_info* fi){
 }
 static int malfs_readdir(const char* path,void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi){
 	printf("readdir\n");
-	int i;
+	unsigned int i;
 	malfs_filep target=find_malfs(path);
 	malfs_filep child;
 	if(target==NULL)
@@ -291,7 +293,7 @@ static int malfs_unlink(const char* path){
 	printf("unlink\n");
 	malfs_filep target;
 	malfs_filep before, curr;
-	int i;
+	unsigned int i;
 
 	target = find_malfs(path);
 	//target does not exist
