@@ -213,6 +213,8 @@ static int malfs_truncate(const char* path,off_t size){
 	}
 	else
 		return -ENOENT;
+	printf("truncate\n");
+	return 0;
 }
 static int malfs_open(const char* path,struct fuse_file_info* fi){
 	printf("open\n");
@@ -222,7 +224,9 @@ static int malfs_open(const char* path,struct fuse_file_info* fi){
 	return 0;
 }
 static int malfs_read(const char* path,char* buf,size_t size,off_t offset,struct fuse_file_info* fi){
+
 	printf("%d read\n",(int)size);
+
 	malfs_filep temp = find_malfs(path);
 	if(temp){
 		if(temp->data==NULL)
