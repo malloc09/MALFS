@@ -395,6 +395,8 @@ static int malfs_rename(const char* from,const char* to){
 	if(!f)
 		return -ENOENT;
 	else{
+		free(f->name); //change name
+		f->name=name;
 		curr=f->parent->children_head;
 
 		//if head is target
@@ -416,8 +418,7 @@ static int malfs_rename(const char* from,const char* to){
 			}
 		}
 		if(t && t->type==MAL_FILE){//t is file
-			free(f->name); //change name
-			f->name=name;
+
 			malfs_unlink(to); //delete t
 		}
 		else if(t && t->type==MAL_DIR){ //t is dir
