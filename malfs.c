@@ -9,6 +9,10 @@
 #include "malfs.h"
 struct malfs_file* root;
 
+struct openf{
+	int fd;
+	int flags;
+};
 
 //find the file or directory which has given path
 static malfs_filep find_malfs(const char* path){
@@ -56,6 +60,7 @@ static malfs_filep create_malfs(char* name,mode_t mode,int type){
 		strcpy(res->name,name);
 		res->type=MAL_DIR;
 		res->stat.st_mode=S_IFDIR | mode;
+		res->stat.st_size=sizeof(malfs_file);
 	}
 	else{
 			res->name=(char*)malloc(strlen(name)+1);
@@ -76,7 +81,6 @@ static malfs_filep create_malfs(char* name,mode_t mode,int type){
 }
 
 static int malfs_getattr(const char* path,struct stat* st){
-	int res=0;
 	malfs_filep temp;
 
 	temp=find_malfs(path);
@@ -95,6 +99,7 @@ static void insert_children(malfs_filep parent,malfs_filep child){
 	parent->children_head=child;
 	child->parent=parent;
 	parent->num_of_children++;
+	parent->stat.st_size+=sizeof(malfs_filep);
 
 }
 //find name from path 1st argument is total path 2nd argument is pointer for saving file/dir name
@@ -118,11 +123,9 @@ static char* find_parent(const char* path,char** fname){
 		return ppath;
 }
 static int malfs_mkdir(const char* path,mode_t mode){
-	int res=0;
 	malfs_filep newdir;
 	malfs_filep parent;
 	char* name,*ppath;
-	struct fuse_context* conn=fuse_get_context();
 	//make root only if there is no root
 	if(strcmp(path,"/")==0 && root==NULL){
 		root=create_malfs("root",mode,MAL_DIR);
@@ -138,7 +141,7 @@ static int malfs_mkdir(const char* path,mode_t mode){
 		parent=find_malfs(ppath);
 		newdir=create_malfs(name,mode,MAL_DIR);
 		insert_children(parent,newdir);
-			free(name);
+		free(name);
 		free(ppath);
 		return 0;
 	}
@@ -218,15 +221,20 @@ static int malfs_truncate(const char* path,off_t size){
 }
 static int malfs_open(const char* path,struct fuse_file_info* fi){
 	printf("open\n");
+	printf("%d\n",O_RDONLY);
 	if(!find_malfs(path))
 		return -ENOENT;
-	
+	struct openf* o=(struct openf*)malloc(sizeof(struct openf));
+	o->flags=fi->flags;
+	o->fd=111;
+	fi->fh=(uintptr_t)o;
+	printf("%p\n",o);
 	return 0;
 }
 static int malfs_read(const char* path,char* buf,size_t size,off_t offset,struct fuse_file_info* fi){
 
 	printf("%d read\n",(int)size);
-
+	printf("%p\n",(struct openf*)(uintptr_t)(fi->fh));
 	malfs_filep temp = find_malfs(path);
 	if(temp){
 		if(temp->data==NULL)
@@ -357,7 +365,10 @@ static int malfs_release(const char* path,struct fuse_file_info* fi){
 static int malfs_chmod(const char* path,mode_t mode){
 	malfs_filep target=find_malfs(path);
 	if(target){
-		target->stat.st_mode=mode;
+		if(target->type==MAL_DIR)
+			target->stat.st_mode=S_IFDIR|mode;
+		else
+			target->stat.st_mode=S_IFREG|mode;
 		return 0;
 	}
 	else
@@ -368,11 +379,56 @@ static int malfs_chown(const char* path,uid_t uid,gid_t gid){
 	malfs_filep target=find_malfs(path);
 	if(target){
 		target->stat.st_uid=uid;
-		target->stat.st_gid=gid;
 		return 0;
 	}
 	else
 		return -ENOENT;
+}
+static int malfs_rename(const char* from,const char* to){
+	char* name;
+	malfs_filep f=find_malfs(from);
+	malfs_filep t=find_malfs(to);
+	char* p=find_parent(to,&name);
+	malfs_filep parent=find_malfs(p);
+	unsigned int i;
+	malfs_filep curr,before;
+	if(!f)
+		return -ENOENT;
+	else{
+		curr=f->parent->children_head;
+
+		//if head is target
+		if(curr==f){
+			f->parent->children_head=f->next;
+			f->parent->num_of_children--;
+		}
+		else{
+			before=curr;
+			curr=curr->next;
+			for(i=1;i<f->parent->num_of_children;i++){
+				if(f==curr){
+					before->next=curr->next;
+					f->parent->num_of_children--;
+					break;
+				}
+				before=curr;
+				curr=curr->next;
+			}
+		}
+		if(t && t->type==MAL_FILE){//t is file
+			free(f->name); //change name
+			f->name=name;
+			malfs_unlink(to); //delete t
+		}
+		else if(t && t->type==MAL_DIR){ //t is dir
+			insert_children(t,f); //insert f in t children
+			return 0;
+		}
+		insert_children(parent,f); //insert f to parent
+		return 0;
+	}
+
+
 }
 void* malfs_init(struct fuse_conn_info* fi){
 	malfs_mkdir("/test1",0666);
@@ -396,7 +452,7 @@ static struct fuse_operations malfs_oper = {
 	.chmod=malfs_chmod,
 	.chown=malfs_chown,
 	.init=malfs_init,
-
+	.rename=malfs_rename,
 };
 
 int main(int argc, char *argv[]){
