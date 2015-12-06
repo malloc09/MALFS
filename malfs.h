@@ -33,6 +33,7 @@ static int malfs_unlink(const char* path);
 static int malfs_release(const char* path,struct fuse_file_info* fi);
 static int malfs_chmod(const char* path,mode_t mode);
 static int malfs_chown(const char* path,uid_t uid,gid_t gid);
+static int malfs_rename(const char* from, const char* to);
 static void* malfs_init(struct fuse_conn_info* conn);
 
 #endif
