@@ -359,7 +359,10 @@ static int malfs_chmod(const char* path,mode_t mode){
 static int malfs_chown(const char* path,uid_t uid,gid_t gid){
 	malfs_filep target=find_malfs(path);
 	if(target){
-		target->stat.st_uid=uid;
+			target->stat.st_uid=uid;
+		
+		if(gid!=(unsigned)-1) //when gid given
+			target->stat.st_gid=gid;
 		return 0;
 	}
 	else
