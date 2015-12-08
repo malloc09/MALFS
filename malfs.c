@@ -9,10 +9,6 @@
 #include "malfs.h"
 struct malfs_file* root;
 
-struct openf{
-	int fd;
-	int flags;
-};
 
 //find the file or directory which has given path
 static malfs_filep find_malfs(const char* path){
@@ -44,7 +40,6 @@ static malfs_filep find_malfs(const char* path){
 			else
 			name=strtok(NULL,"/");
 		}
-		printf("ii%s\n",tpath);
 		free(tpath);
 		return temp;
 	}
@@ -147,7 +142,6 @@ static int malfs_mkdir(const char* path,mode_t mode){
 	}
 }
 static int malfs_rmdir(const char* path){
-	printf("rmdir\n");
 	malfs_filep target;
 	malfs_filep before,curr;
 	unsigned int i;
@@ -196,7 +190,6 @@ static int malfs_rmdir(const char* path){
 
 }
 static int malfs_truncate(const char* path,off_t size){
-	printf("%d truncate\n", (int)size);
 	
 	malfs_filep temp = find_malfs(path);
 	if(temp){
@@ -216,25 +209,15 @@ static int malfs_truncate(const char* path,off_t size){
 	}
 	else
 		return -ENOENT;
-	printf("truncate\n");
 	return 0;
 }
 static int malfs_open(const char* path,struct fuse_file_info* fi){
-	printf("open\n");
-	printf("%d\n",O_RDONLY);
 	if(!find_malfs(path))
 		return -ENOENT;
-	struct openf* o=(struct openf*)malloc(sizeof(struct openf));
-	o->flags=fi->flags;
-	o->fd=111;
-	fi->fh=(uintptr_t)o;
-	printf("%p\n",o);
 	return 0;
 }
 static int malfs_read(const char* path,char* buf,size_t size,off_t offset,struct fuse_file_info* fi){
 
-	printf("%d read\n",(int)size);
-	printf("%p\n",(struct openf*)(uintptr_t)(fi->fh));
 	malfs_filep temp = find_malfs(path);
 	if(temp){
 		if(temp->data==NULL)
@@ -248,7 +231,6 @@ static int malfs_read(const char* path,char* buf,size_t size,off_t offset,struct
 		return -ENOENT;
 }
 static int malfs_write(const char* path,const char* buf,size_t size,off_t offset,struct fuse_file_info* fi){
-	printf("write\n");
 	malfs_filep temp = find_malfs(path);
 	if(temp){
 		if(temp->type != MAL_FILE)	
@@ -272,7 +254,6 @@ static int malfs_opendir(const char* path,struct fuse_file_info* fi){
 		return -ENOENT;
 }
 static int malfs_readdir(const char* path,void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi){
-	printf("readdir\n");
 	unsigned int i;
 	malfs_filep target=find_malfs(path);
 	malfs_filep child;
@@ -297,7 +278,6 @@ static int malfs_readdir(const char* path,void* buf, fuse_fill_dir_t filler, off
 		return -ENOTDIR;
 }
 static int malfs_create(const char* path,mode_t mode,struct fuse_file_info* fi){
-	printf("create\n");
 	char *name, *ppath;
 	malfs_filep parent;
 	malfs_filep newfile;
@@ -314,7 +294,6 @@ static int malfs_create(const char* path,mode_t mode,struct fuse_file_info* fi){
 	return 0;
 }
 static int malfs_utimens(const char* path, const struct timespec tv[2]){
-	printf("utimens\n");
 	malfs_filep target=find_malfs(path);
 	if(target){
 		target->stat.st_atime=tv[0].tv_sec;
@@ -324,7 +303,6 @@ static int malfs_utimens(const char* path, const struct timespec tv[2]){
 	else return -ENOENT;
 }
 static int malfs_unlink(const char* path){
-	printf("unlink\n");
 	malfs_filep target;
 	malfs_filep before, curr;
 	unsigned int i;
@@ -360,7 +338,10 @@ static int malfs_unlink(const char* path){
 	}
 }
 static int malfs_release(const char* path,struct fuse_file_info* fi){
-	printf("release\n");return 0;
+	if(!find_malfs(path))
+		return -ENOENT;
+	return 0;
+
 }
 static int malfs_chmod(const char* path,mode_t mode){
 	malfs_filep target=find_malfs(path);
